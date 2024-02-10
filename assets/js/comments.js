@@ -67,10 +67,23 @@ const data = {
     ]
 };
 
-let currentUserComments = JSON.parse(localStorage.getItem('currentUserEntries')) || [];
+// let currentUserComments = JSON.parse(localStorage.getItem('currentUserEntries')) || [];
+// let dataComments = JSON.parse(localStorage.getItem('dataEntries')) || data.comments;
 
-function saveCurrentUserCommentToLocalStorage(){
-    return localStorage.setItem('currentUserEntries',JSON.stringify(currentUserComments));
+
+// function saveCommentsData(){
+//   return localStorage.setItem('dataEntries',JSON.stringify(data.comments));
+// }
+
+// function saveCurrentUserCommentToLocalStorage(){
+//     return localStorage.setItem('currentUserEntries',JSON.stringify(currentUserComments));
+// }
+
+let comments = JSON.parse(localStorage.getItem('commentEntries')) || data.comments;
+console.log(comments);
+
+function saveComment(){
+  return localStorage.setItem('commentEntries',JSON.stringify(comments))
 }
 
 const commentsContainer = document.querySelector('.comments');
@@ -207,21 +220,23 @@ function renderComments() {
   commentsContainer.innerHTML = '';
 
   // Commentler
-  for (const comment of data.comments) {
-    let commentHTML = createCommentItem(comment.id, comment.content, comment.createdAt, comment.score, comment.user.username,comment.user.image.png);
-    commentsContainer.innerHTML += commentHTML;
-  }
-
-  // LocalStorage'ta tutulan commentler
-  for(const comment of currentUserComments){
-    if(comment.replyingTo == null){
-      commentsContainer.innerHTML += createCommentItem(comment.id, comment.content, comment.createdAt, comment.score, comment.user.username,comment.user.image.png);
+  for (const comment of comments) {
+    if(!comment.replyingTo){
+      let commentHTML = createCommentItem(comment.id, comment.content, comment.createdAt, comment.score, comment.user.username,comment.user.image.png);
+      commentsContainer.innerHTML += commentHTML;
     }
   }
 
+  // LocalStorage'ta tutulan commentler
+  // for(const comment of comments){
+  //   if(comment.replyingTo == null){
+  //     commentsContainer.innerHTML += createCommentItem(comment.id, comment.content, comment.createdAt, comment.score, comment.user.username,comment.user.image.png);
+  //   }
+  // }
+
   // Current User'ın verdiği cevaplar
-  for(const reply of currentUserComments){
-    for (const comment of data.comments) {
+  for(const reply of comments){
+    for (const comment of comments) {
       if(reply.replyingTo == comment.user.username){
         const replyContent = reply.content;
         const boldContent = replyContent.replace(/(@\w+)/g, '<b>$1</b>');
@@ -238,30 +253,30 @@ function renderComments() {
 
 
   // Data'da yer alan cevaplar
-  for (const comment of data.comments) {
-    if(comment.replies.length > 0){
-      console.log(comment.replies)
-      for (const reply of comment.replies) {
-        if(reply.replyingTo == comment.user.username){
-          const replyContent = reply.content;
-          const entries = document.querySelectorAll('.comment');
-          for (const entry of entries) {
-            if(entry.dataset.commentid == comment.id){
-              const createReply = createReplyItem(reply.id, replyContent, reply.createdAt, reply.score, reply.user.username,reply.user.image.png);
-              entry.insertAdjacentHTML('afterend', createReply);
-            }
-          }
-        }
-      }
-    }
-  }
+  // for (const comment of comments) {
+  //   if(comment.replies.length > 0){
+  //     console.log(comment.replies)
+  //     for (const reply of comment.replies) {
+  //       if(reply.replyingTo == comment.user.username){
+  //         const replyContent = reply.content;
+  //         const entries = document.querySelectorAll('.comment');
+  //         for (const entry of entries) {
+  //           if(entry.dataset.commentid == comment.id){
+  //             const createReply = createReplyItem(reply.id, replyContent, reply.createdAt, reply.score, reply.user.username,reply.user.image.png);
+  //             entry.insertAdjacentHTML('afterend', createReply);
+  //           }
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
 
   bindEvents();
 }
 
 function searchCommentById(id) {
   let searchedComment = null;
-  for(const comment of currentUserComments) {
+  for(const comment of comments) {
       if(comment.id === id) {
           searchedComment = comment;
           break;
@@ -277,21 +292,33 @@ function searchCommentById(id) {
   return searchedComment;
 }
 
+
 function rateCommentUp(e) {
   e.preventDefault();
   const commentId = Number(this.dataset.commentid);
-  const comment = searchCommentById(commentId);
-  comment.score++;
-  saveCurrentUserCommentToLocalStorage();
+  // const commentContent = searchCommentById(commentId);
+  for (const comment of comments) {
+    if(comment.id == commentId && !comment.isRated){
+      comment.score++;
+      comment.isRated = true;
+      saveComment();
+    }
+  }
   renderComments();
 }
 
 function rateCommentDown(e) {
   e.preventDefault();
   const commentId = Number(this.dataset.commentid);
-  const comment = searchCommentById(commentId);
-  comment.score--;
-  saveCurrentUserCommentToLocalStorage();
+  // const comment = searchCommentById(commentId);
+  for (const comment of comments) {
+    if(comment.id == commentId && !comment.isRated){
+      comment.score--;
+      comment.isRated = true;
+      saveComment();
+    }
+  }
+  saveComment();
   renderComments();
 }
 
@@ -307,8 +334,8 @@ function handleNewCommentForm(e) {
     formObj.replies = [];
     formObj.user = data.currentUser;
 
-    currentUserComments.push(formObj);
-    saveCurrentUserCommentToLocalStorage();
+    comments.push(formObj);
+    saveComment();
 
     renderComments();
 
@@ -319,7 +346,7 @@ function handleNewCommentForm(e) {
 
 function createUniqueId(){
   let id = data.comments.length + 1;
-  for (const comment of currentUserComments) {
+  for (const comment of comments) {
     if(comment.id === id){
       id+=1;
     }
@@ -341,11 +368,11 @@ function deleteComment(e){
 
 function deleteCommentFunc(e){
   e.preventDefault();
-  const commentIndex = currentUserComments.indexOf(toDeleteComment);
+  const commentIndex = comments.indexOf(toDeleteComment);
   console.log(commentIndex);
   if(e.target.id == "yes"){
-    currentUserComments.splice(commentIndex,1);
-    saveCurrentUserCommentToLocalStorage();
+    comments.splice(commentIndex,1);
+    saveComment();
     renderComments();
   }
   dialog.close();
@@ -377,7 +404,7 @@ function saveEditedForm(e){
   const commentId = parseInt(this.dataset.commentid);
   const currentUserComments = searchCommentById(commentId);
   currentUserComments.content = e.target.content.value;
-  saveCurrentUserCommentToLocalStorage();
+  saveComment();
   renderComments();
 }
 
@@ -418,8 +445,8 @@ function saveReply(e){
   formObj.replyingTo = searchCommentById(replyId).user.username;
   formObj.user = data.currentUser;
 
-  currentUserComments.push(formObj);
-  saveCurrentUserCommentToLocalStorage();
+  comments.push(formObj);
+  saveComment();
   renderComments();
 }
 
